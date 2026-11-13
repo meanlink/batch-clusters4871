@@ -19,7 +19,11 @@ def seed():
         d=db.scalar(select(Dataset).where(Dataset.name==m['dataset_name']))
         if not d:
             rows=seed_records()
-            d=Dataset(name=m['dataset_name'],source=m['short']+'-202611.csv',records=rows,checksum=checksum(rows),created_at=time.time())
+            from src.services.reconcile import reconcile
+            report=reconcile(rows)
+            valid=report['valid_records']
+            quality={k:report[k] for k in ('counts','duplicates','isolated','groups')}
+            d=Dataset(name=m['dataset_name'],source=m['short']+'-202611.csv',records=valid,raw_records=rows,quality=quality,checksum=checksum(valid),created_at=time.time())
             db.add(d); db.flush()
         if not db.scalar(select(Job).where(Job.name=='基线复核 · '+m['name'])):
             params={p['key']:p['default'] for p in m.get('parameters',[])}
